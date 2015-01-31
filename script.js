@@ -13,25 +13,28 @@
 	
 	var radius = 40;
 	var gravity = 0.5;
-	var maxSpeed = 10;
-	var accel = 1;
-	var deaccel = 0.5;
 	var jumpPower = 15;
 	var shape = "circle";
 	
-	ball = {
+	var scroll = {
+		total: 0,
+		dist: 200,
+		speed: 10
+	};
+	
+	var ball = {
 		x: canvas.width / 2,
 		y: canvas.height / 2,
-		dx: 0,
 		dy: 0,
-		plat: null
+		plat: null,
+		speed: 10
 	};
 	
 	var platforms = [
 		{
-			x: 0,
+			x: -10000,
 			y: canvas.height,
-			width: canvas.width,
+			width: 20000,
 			height: 0
 		}, {
 			x: 100,
@@ -58,29 +61,15 @@
 		keys[key] = false;
 	};
 	
-	function physics() {if(ball.plat)console.log(ball.plat);
-		var lastDx = ball.dx;
-		if(keys[37]) ball.dx -= accel;
-		if(keys[39]) ball.dx += accel;
-		if(ball.dx == lastDx) {
-			if(ball.dx > 0) {
-				ball.dx -= deaccel;
-				if(ball.dx < 0) ball.dx = 0;
-			}
-			else if(ball.dx < 0) {
-				ball.dx += deaccel;
-				if(ball.dx > 0) ball.dx = 0;
-			}
-		}
-		if(ball.dx > maxSpeed) ball.dx = maxSpeed;
-		if(ball.dx < -maxSpeed) ball.dx = -maxSpeed;
-		ball.x += ball.dx;
-		if(ball.x < radius) {
-			ball.x = radius;
+	function physics() {
+		if(keys[37]) ball.x -= ball.speed;
+		if(keys[39]) ball.x += ball.speed;
+		if(ball.x < radius + scroll.total) {
+			ball.x = radius + scroll.total;
 			ball.dx = 0;
 		}
-		if(ball.x > canvas.width - radius) {
-			ball.x = canvas.width - radius;
+		if(ball.x > canvas.width - radius + scroll.total) {
+			ball.x = canvas.width - radius + scroll.total;
 			ball.dx = 0;
 		}
 		if(ball.plat && (ball.x + radius <= ball.plat.x || ball.x - radius >= ball.plat.x + ball.plat.width)) ball.plat = null;
@@ -102,18 +91,20 @@
 			ball.dy = jumpPower;
 			ball.y -= ball.dy;
 		}
+		if(ball.x > canvas.width - scroll.dist + scroll.total) scroll.total += scroll.speed;
+		if(ball.x < scroll.dist + scroll.total) scroll.total -= scroll.speed;
 	}
 	
 	function draw() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		ctx.fillStyle = "green";
-		if(shape == "circle") ctx.circle(ball.x, ball.y, radius);
-		else if(shape == "square") ctx.fillRect(ball.x - radius, ball.y - radius, radius * 2, radius * 2);
 		ctx.fillStyle = "black";
 		for(var i = 0; i < platforms.length; i++) {
 			var plat = platforms[i];
-			ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+			ctx.fillRect(plat.x - scroll.total, plat.y, plat.width, plat.height);
 		}
+		ctx.fillStyle = "green";
+		if(shape == "circle") ctx.circle(ball.x - scroll.total, ball.y, radius);
+		else if(shape == "square") ctx.fillRect(ball.x - radius - scroll.total, ball.y - radius, radius * 2, radius * 2);
 	}
 	
 	setInterval(function() {

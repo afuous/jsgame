@@ -2,7 +2,7 @@
 	var canvas = document.getElementById("canvas");
 	var ctx = canvas.getContext("2d");
 	
-	ctx.circle = function(x, y, radius) {
+	ctx.fillCircle = function(x, y, radius) {
 		ctx.beginPath();
 		ctx.arc(x, y, radius, 0, Math.PI * 2);
 		ctx.fill();
@@ -11,24 +11,54 @@
 	canvas.width = 1000;
 	canvas.height = 600;
 	
-	var radius = 40;
-	var gravity = 0.5;
-	var jumpPower = 15;
-	var shape = "circle";
+	var LEFT = 0;
+	var RIGHT = 1;
 	
-	var scroll = {
-		total: 0,
-		dist: 200,
-		speed: 10
-	};
-	
-	var ball = {
-		x: canvas.width / 2,
-		y: canvas.height / 2,
-		dy: 0,
-		plat: null,
-		speed: 10
-	};
+	function dist(a, b) {
+		var dx = a.x - b.x;
+		var dy = a.y - b.y;
+		return Math.sqrt(dx * dx + dy * dy);
+	}
+		
+	var players = [
+		{
+			x: canvas.width - 200,
+			y: canvas.height / 2,
+			dy: 0,
+			plat: null,
+			speed: 10,
+			radius: 40,
+			gravity: 0.5,
+			jumpPower: 15,
+			keys: {
+				left: 37,
+				right: 39,
+				up: 38,
+				shoot: 13 // enter
+			},
+			color: "green",
+			facing: LEFT,
+			lives: 10
+		}, {
+			x: 200,
+			y: canvas.height / 2,
+			dy: 0,
+			plat: null,
+			speed: 10,
+			radius: 40,
+			gravity: 0.5,
+			jumpPower: 15,
+			keys: {
+				left: "A".charCodeAt(0),
+				right: "D".charCodeAt(0),
+				up: "W".charCodeAt(0),
+				shoot: 32 // space
+			},
+			color: "orange",
+			facing: RIGHT,
+			lives: 10
+		}
+	];
 	
 	var platforms = [
 		{
@@ -49,50 +79,85 @@
 		}
 	];
 	
+	var bullets = [];
+	
 	var keys = {};
 	window.onkeydown = function(event) {
 		var key = (event || window.event).keyCode;
 		keys[key] = true;
-		if(key == 79) shape = "circle"; // O
-		if(key == 80) shape = "square"; // P
+		for(var i = 0; i < players.length; i++) {
+			var player = players[i];
+			if(key == player.keys.left) player.facing = LEFT;
+			else if(key == player.keys.right) player.facing = RIGHT;
+		}
 	};
 	window.onkeyup = function(event) {
 		var key = (event || window.event).keyCode;
 		keys[key] = false;
+		for(var i = 0; i < players.length; i++) {
+			var player = players[i];
+			if(key == player.keys.shoot) {
+				bullets.push({
+					x: player.x,
+					y: player.y,
+					facing: player.facing,
+					shooter: player,
+					radius: 10,
+					color: player.color,
+					speed: 20
+				});
+			}
+		}
 	};
 	
 	function physics() {
-		if(keys[37]) ball.x -= ball.speed;
-		if(keys[39]) ball.x += ball.speed;
-		if(ball.x < radius + scroll.total) {
-			ball.x = radius + scroll.total;
-			ball.dx = 0;
+		for(var i = 0; i < players.length; i++) {
+			var player = players[i];
+			if(keys[player.keys.left]) player.x -= player.speed;
+			if(keys[player.keys.right]) player.x += player.speed;
+			if(player.x < player.radius) {
+				player.x = player.radius;
+			}
+			if(player.x > canvas.width - player.radius) {
+				player.x = canvas.width - player.radius;
+			}
+			if(player.plat && (player.x + player.radius <= player.plat.x || player.x - player.radius >= player.plat.x + player.plat.width)) player.plat = null;
+			if(!player.plat) {
+				var lastY = player.y;
+				player.dy -= player.gravity;
+				player.y -= player.dy;
+				for(var j = 0; !player.plat && j < platforms.length; j++) {
+					var plat = platforms[j];
+					if(player.x + player.radius > plat.x && player.x - player.radius < plat.x + plat.width && lastY + player.radius < plat.y && player.y + player.radius >= plat.y) {
+						player.y = plat.y - player.radius;
+						player.dy = 0;
+						player.plat = plat;
+					}
+				}
+			}
+			else if(keys[player.keys.up]) {
+				player.plat = null;
+				player.dy = player.jumpPower;
+				player.y -= player.dy;
+			}
 		}
-		if(ball.x > canvas.width - radius + scroll.total) {
-			ball.x = canvas.width - radius + scroll.total;
-			ball.dx = 0;
-		}
-		if(ball.plat && (ball.x + radius <= ball.plat.x || ball.x - radius >= ball.plat.x + ball.plat.width)) ball.plat = null;
-		if(!ball.plat) {
-			var lastY = ball.y;
-			ball.dy -= gravity;
-			ball.y -= ball.dy;
-			for(var i = 0; !ball.plat && i < platforms.length; i++) {
-				var plat = platforms[i];
-				if(ball.x + radius > plat.x && ball.x - radius < plat.x + plat.width && lastY + radius < plat.y && ball.y + radius >= plat.y) {
-					ball.y = plat.y - radius;
-					ball.dy = 0;
-					ball.plat = plat;
+		for(var i = 0; i < bullets.length; i++) {
+			var bullet = bullets[i];
+			if(bullet.facing == LEFT) bullet.x -= bullet.speed;
+			else bullet.x += bullet.speed;
+			if(bullet.x < -bullet.radius || bullet.x > canvas.width + bullet.radius) bullets.splice(i--, 1);
+			else for(var j = 0; j < players.length; j++) {
+				var player = players[j];
+				if(player != bullet.shooter && dist(player, bullet) < player.radius + bullet.radius) {
+					bullets.splice(i--, 1);
+					player.lives--;
+					break;
 				}
 			}
 		}
-		else if(keys[38]) {
-			ball.plat = null;
-			ball.dy = jumpPower;
-			ball.y -= ball.dy;
+		for(var i = 0; i < players.length; i++) {
+			if(players[i].lives == 0) clearInterval(interval);
 		}
-		if(ball.x > canvas.width - scroll.dist + scroll.total) scroll.total += scroll.speed;
-		if(ball.x < scroll.dist + scroll.total) scroll.total -= scroll.speed;
 	}
 	
 	function draw() {
@@ -100,14 +165,25 @@
 		ctx.fillStyle = "black";
 		for(var i = 0; i < platforms.length; i++) {
 			var plat = platforms[i];
-			ctx.fillRect(plat.x - scroll.total, plat.y, plat.width, plat.height);
+			ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
 		}
-		ctx.fillStyle = "green";
-		if(shape == "circle") ctx.circle(ball.x - scroll.total, ball.y, radius);
-		else if(shape == "square") ctx.fillRect(ball.x - radius - scroll.total, ball.y - radius, radius * 2, radius * 2);
+		for(var i = 0; i < players.length; i++) {
+			var player = players[i];
+			ctx.fillStyle = player.color;
+			ctx.fillCircle(player.x, player.y, player.radius);
+		}
+		for(var i = 0; i < bullets.length; i++) {
+			var bullet = bullets[i];
+			ctx.fillStyle = bullet.color;
+			ctx.fillCircle(bullet.x, bullet.y, bullet.radius);
+		}
+		ctx.font = "30px Arial";
+		ctx.fillStyle = "black";
+		ctx.fillText(players[0].lives.toString(), canvas.width - 40, 30);
+		ctx.fillText(players[1].lives.toString(), 10, 30);
 	}
 	
-	setInterval(function() {
+	var interval = setInterval(function() {
 		physics();
 		draw();
 	}, 10);

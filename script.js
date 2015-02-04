@@ -19,17 +19,33 @@
 		var dy = a.y - b.y;
 		return Math.sqrt(dx * dx + dy * dy);
 	}
-		
-	var players = [
-		{
-			x: canvas.width - 200,
-			y: canvas.height / 2,
+	
+	function playerBase() {
+		return {
 			dy: 0,
 			plat: null,
 			speed: 10,
 			radius: 40,
 			gravity: 0.5,
 			jumpPower: 15,
+			lives: 10
+		};
+	}
+	
+	function combine() {
+		var obj = {};
+		for(var i = 0; i < arguments.length; i++) {
+			for(var key in arguments[i]) {
+				obj[key] = arguments[i][key];
+			}
+		}
+		return obj;
+	}
+		
+	var players = [
+		combine(playerBase(), {
+			x: canvas.width - 200,
+			y: canvas.height / 2,
 			keys: {
 				left: 37,
 				right: 39,
@@ -37,34 +53,26 @@
 				shoot: 13 // enter
 			},
 			color: "green",
-			facing: LEFT,
-			lives: 10
-		}, {
+			facing: LEFT
+		}), combine(playerBase(), {
 			x: 200,
 			y: canvas.height / 2,
-			dy: 0,
-			plat: null,
-			speed: 10,
-			radius: 40,
-			gravity: 0.5,
-			jumpPower: 15,
 			keys: {
 				left: "A".charCodeAt(0),
 				right: "D".charCodeAt(0),
 				up: "W".charCodeAt(0),
 				shoot: 32 // space
 			},
-			color: "orange",
-			facing: RIGHT,
-			lives: 10
-		}
+			color: "blue",
+			facing: RIGHT
+		})
 	];
 	
 	var platforms = [
 		{
-			x: -10000,
+			x: 0,
 			y: canvas.height,
-			width: 20000,
+			width: canvas.width,
 			height: 0
 		}, {
 			x: 100,
@@ -72,8 +80,13 @@
 			width: 200,
 			height: 10
 		}, {
-			x: 500,
-			y: 350,
+			x: 400,
+			y: 320,
+			width: 200,
+			height: 10
+		}, {
+			x: 700,
+			y: 450,
 			width: 200,
 			height: 10
 		}
@@ -171,6 +184,9 @@
 			var player = players[i];
 			ctx.fillStyle = player.color;
 			ctx.fillCircle(player.x, player.y, player.radius);
+			ctx.fillStyle = "black";
+			ctx.fillCircle(player.x + (player.facing == LEFT ? -1 : 1) * player.radius / 2, player.y - player.radius / 3, player.radius / 6);
+			ctx.fillCircle(player.x + (player.facing == LEFT ? -1 : 1) * player.radius / 2, player.y + player.radius / 3, player.radius / 6);
 		}
 		for(var i = 0; i < bullets.length; i++) {
 			var bullet = bullets[i];

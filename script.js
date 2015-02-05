@@ -9,7 +9,7 @@
 	};
 	
 	canvas.width = 1000;
-	canvas.height = 600;
+	canvas.height = 800;
 	
 	var LEFT = 0;
 	var RIGHT = 1;
@@ -20,16 +20,23 @@
 		return Math.sqrt(dx * dx + dy * dy);
 	}
 	
-	function playerBase() {
-		return {
+	function getPlayer(player) {
+		return combine({
 			dy: 0,
 			plat: null,
-			speed: 10,
-			radius: 40,
+			speed: 5,
+			radius: 30,
 			gravity: 0.5,
 			jumpPower: 15,
-			lives: 10
-		};
+			lives: 20
+		}, player);
+	}
+	
+	function getPlatform(platform) {
+		return combine({
+			width: 200,
+			height: 10
+		}, platform);
 	}
 	
 	function combine() {
@@ -41,64 +48,72 @@
 		}
 		return obj;
 	}
+	
+	var players;
+	var platforms;
+	var bullets;
+	var playing = false;
+	
+	function init() {
+		players = [
+			getPlayer({
+				x: canvas.width - 200,
+				y: canvas.height - 200,
+				keys: {
+					left: 37,
+					right: 39,
+					up: 38,
+					shoot: 13 // enter
+				},
+				color: "green",
+				facing: LEFT
+			}), getPlayer({
+				x: 200,
+				y: canvas.height - 200,
+				keys: {
+					left: "A".charCodeAt(0),
+					right: "D".charCodeAt(0),
+					up: "W".charCodeAt(0),
+					shoot: 32 // space
+				},
+				color: "blue",
+				facing: RIGHT
+			})
+		];
 		
-	var players = [
-		combine(playerBase(), {
-			x: canvas.width - 200,
-			y: canvas.height / 2,
-			keys: {
-				left: 37,
-				right: 39,
-				up: 38,
-				shoot: 13 // enter
-			},
-			color: "green",
-			facing: LEFT
-		}), combine(playerBase(), {
-			x: 200,
-			y: canvas.height / 2,
-			keys: {
-				left: "A".charCodeAt(0),
-				right: "D".charCodeAt(0),
-				up: "W".charCodeAt(0),
-				shoot: 32 // space
-			},
-			color: "blue",
-			facing: RIGHT
-		})
-	];
+		platforms = [
+			getPlatform({
+				x: 0,
+				y: canvas.height,
+				width: canvas.width,
+				height: 0
+			}), getPlatform({
+				x: 100,
+				y: 450
+			}), getPlatform({
+				x: 400,
+				y: 320
+			}), getPlatform({
+				x: 700,
+				y: 450
+			}), getPlatform({
+				x: 400,
+				y: 600
+			})
+		];
+		
+		bullets = [];
+		playing = true;
+	}
 	
-	var platforms = [
-		{
-			x: 0,
-			y: canvas.height,
-			width: canvas.width,
-			height: 0
-		}, {
-			x: 100,
-			y: 450,
-			width: 200,
-			height: 10
-		}, {
-			x: 400,
-			y: 320,
-			width: 200,
-			height: 10
-		}, {
-			x: 700,
-			y: 450,
-			width: 200,
-			height: 10
-		}
-	];
-	
-	var bullets = [];
+	init();
+	playing = false;
 	
 	var keys = {};
 	window.onkeydown = function(event) {
 		var key = (event || window.event).keyCode;
 		keys[key] = true;
-		for(var i = 0; i < players.length; i++) {
+		if(playing) for(var i = 0; i < players.length; i++) {
 			var player = players[i];
 			if(key == player.keys.left) player.facing = LEFT;
 			else if(key == player.keys.right) player.facing = RIGHT;
@@ -107,7 +122,7 @@
 	window.onkeyup = function(event) {
 		var key = (event || window.event).keyCode;
 		keys[key] = false;
-		for(var i = 0; i < players.length; i++) {
+		if(playing) for(var i = 0; i < players.length; i++) {
 			var player = players[i];
 			if(key == player.keys.shoot) {
 				bullets.push({
@@ -121,6 +136,12 @@
 				});
 			}
 		}
+	};
+	
+	document.getElementById("start").onclick = function() {
+		this.blur();
+		this.disabled = true;
+		if(!playing) init();
 	};
 	
 	function physics() {
@@ -162,14 +183,17 @@
 			else for(var j = 0; j < players.length; j++) {
 				var player = players[j];
 				if(player != bullet.shooter && dist(player, bullet) < player.radius + bullet.radius) {
-					bullets.splice(i--, 1);
 					player.lives--;
+					if(player.lives > 0) bullets.splice(i--, 1);
 					break;
 				}
 			}
 		}
 		for(var i = 0; i < players.length; i++) {
-			if(players[i].lives == 0) clearInterval(interval);
+			if(players[i].lives == 0) {
+				document.getElementById("start").disabled = false;
+				playing = false;
+			}
 		}
 	}
 	
@@ -194,13 +218,16 @@
 			ctx.fillCircle(bullet.x, bullet.y, bullet.radius);
 		}
 		ctx.font = "30px Arial";
-		ctx.fillStyle = "black";
-		ctx.fillText(players[0].lives.toString(), canvas.width - 40, 30);
+		ctx.textAlign = "right";
+		ctx.fillStyle = players[0].color;
+		ctx.fillText(players[0].lives.toString(), canvas.width - 10, 30);
+		ctx.textAlign = "left";
+		ctx.fillStyle = players[1].color;
 		ctx.fillText(players[1].lives.toString(), 10, 30);
 	}
 	
-	var interval = setInterval(function() {
-		physics();
+	setInterval(function() {
+		if(playing) physics();
 		draw();
 	}, 10);
 })();

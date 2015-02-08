@@ -141,7 +141,13 @@
 	document.getElementById("start").onclick = function() {
 		this.blur();
 		this.disabled = true;
-		if(!playing) setTimeout(init, 3000);
+		if(!playing) {
+			init();
+			playing = false;
+			setTimeout(function() {
+				playing = true;
+			}, 3000);
+		}
 	};
 	
 	function physics() {
